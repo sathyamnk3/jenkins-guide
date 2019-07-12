@@ -45,9 +45,9 @@ pipeline {
         }
         stage('Quality Tests') {
           steps {
-            sh 'docker login --username $DOCKER_USR --password $DOCKER_PSW'
-            sh 'docker tag nodeapp-dev:trunk damasosanoja/nodeapp-dev:latest'
-            sh 'docker push damasosanoja/nodeapp-dev:latest'
+            sh 'docker login --username $DOCKER_USER --password $DOCKER_PWD'
+            sh 'docker tag nodeapp-dev:trunk dockersp/nodeapp-dev:latest'
+            sh 'docker push dockersp/nodeapp-dev:latest'
           }
         }
       }
@@ -87,9 +87,9 @@ pipeline {
             steps {
                     retry(3) {
                         timeout(time:10, unit: 'MINUTES') {
-                            sh 'docker tag nodeapp-dev:trunk damasosanoja/nodeapp-prod:latest'
-                            sh 'docker push damasosanoja/nodeapp-prod:latest'
-                            sh 'docker save damasosanoja/nodeapp-prod:latest | gzip > nodeapp-prod-golden.tar.gz'
+                            sh 'docker tag nodeapp-dev:trunk dockersp/nodeapp-prod:latest'
+                            sh 'docker push dockersp/nodeapp-prod:latest'
+                            sh 'docker save dockersp/nodeapp-prod:latest | gzip > nodeapp-prod-golden.tar.gz'
                         }
                     }
 
