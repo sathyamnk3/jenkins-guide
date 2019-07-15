@@ -10,7 +10,7 @@ pipeline {
 
       }
       parallel {
-        stage('Express Image') {
+        stage('node Image') {
           steps {
             sh 'docker build -f express-image/Dockerfile \
             -t nodeapp-dev:trunk .'
@@ -45,7 +45,7 @@ pipeline {
       parallel {
         stage('Mocha Tests') {
           steps {
-            sh 'docker run --name nodeapp-dev --network="bridge" -d \
+            sh 'docker run --name nodeapp-devv --network="bridge" -d \
             -p 9000:9000 nodeapp-dev:trunk'
             sh 'docker run --name testing-image -v $PWD:/JUnit --network="bridge" \
             --link=nodeapp-dev -d -p 9001:9000 \
