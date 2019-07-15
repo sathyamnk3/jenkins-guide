@@ -18,7 +18,7 @@ pipeline {
         }
         stage('Test-Unit Image') {
           steps {
-            sh 'docker build -f test-image/Dockerfile \
+            sh 'docker build -f testing-image/Dockerfile \
             -t test-image:latest .'
           }
         }
