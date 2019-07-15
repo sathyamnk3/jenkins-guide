@@ -1,107 +1,70 @@
-pipeline {
-  agent any
-  stages {
-    stage('BUILD') {
-      post {
-        failure {
-          echo 'I failed :('
+node('node') {
 
-        }
 
-      }
-      parallel {
-        stage('node Image') {
-          steps {
-            sh 'docker build -f express-image/Dockerfile \
-            -t nodeapp-dev:trunk .'
-          }
-        }
-        stage('Test-Unit Image') {
-          steps {
-            sh 'docker build -f testing-image/Dockerfile \
-            -t test-image:latest .'
-          }
-        }
-      }
+    currentBuild.result = "SUCCESS"
+
+    try {
+
+       stage('Checkout'){
+
+          checkout scm
+       }
+
+       stage('Test'){
+
+         env.NODE_ENV = "test"
+
+         print "Environment will be : ${env.NODE_ENV}"
+
+         sh 'node -v'
+         sh 'npm prune'
+         sh 'npm install'
+         sh 'npm test'
+
+       }
+
+       stage('Build Docker'){
+
+            sh './dockerBuild.sh'
+       }
+
+       stage('Deploy'){
+
+         echo 'Push to Repo'
+         sh './dockerPushToRepo.sh'
+
+         echo 'ssh to web server and tell it to pull new image'
+         sh 'ssh deploy@xxxxx.xxxxx.com running/xxxxxxx/dockerRun.sh'
+
+       }
+
+       stage('Cleanup'){
+
+         echo 'prune and cleanup'
+         sh 'npm prune'
+         sh 'rm node_modules -rf'
+
+         mail body: 'project build successful',
+                     from: 'xxxx@yyyyy.com',
+                     replyTo: 'xxxx@yyyy.com',
+                     subject: 'project build successful',
+                     to: 'yyyyy@yyyy.com'
+       }
+
+
+
     }
-    stage('TEST') {
-      post {
-        success {
-          echo 'Success!'
+    catch (err) {
 
-        }
+        currentBuild.result = "FAILURE"
 
-        unstable {
-          echo 'I am unstable'
+            mail body: "project build error is here: ${env.BUILD_URL}" ,
+            from: 'xxxx@yyyy.com',
+            replyTo: 'yyyy@yyyy.com',
+            subject: 'project build failed',
+            to: 'zzzz@yyyyy.com'
 
-        }
-
-        failure {
-          echo 'I failed :('
-
-        }
-
-      }
-      parallel {
-        stage('Mocha Tests') {
-          steps {
-            sh 'docker run --name nodeapp-devv --network="bridge" -d \
-            -p 9000:9000 nodeapp-dev:trunk'
-            sh 'docker run --name testing-image -v $PWD:/JUnit --network="bridge" \
-            --link=nodeapp-dev -d -p 9001:9000 \
-            test-image:latest'
-          }
-        }
-        stage('Quality Tests') {
-          steps {
-            sh 'docker login --username $DOCKER_USER --password $DOCKER_PWD'
-            sh 'docker tag nodeapp-dev:trunk dockersp/nodeapp-dev:latest'
-            sh 'docker push dockersp/nodeapp-dev:latest'
-          }
-        }
-      }
+        throw err
     }
-    stage('DEPLOY') {
-      when {
-        branch 'master'
-      }
-      post {
-        failure {
-          sh 'docker stop nodeapp-dev testing-image'
-          sh 'docker system prune -f'
-          deleteDir()
 
-        }
-
-      }
-      steps {
-        retry(count: 3) {
-          timeout(time: 10, unit: 'MINUTES') {
-            sh 'docker tag nodeapp-dev:trunk dockersp/nodeapp-prod:latest'
-            sh 'docker push dockersp/nodeapp-prod:latest'
-            sh 'docker save dockersp/nodeapp-prod:latest | gzip > nodeapp-prod-golden.tar.gz'
-          }
-
-        }
-
-      }
-    }
-    stage('REPORTS') {
-      steps {
-        junit 'reports.xml'
-        archiveArtifacts(artifacts: 'reports.xml', allowEmptyArchive: true)
-        archiveArtifacts(artifacts: 'nodeapp-prod-golden.tar.gz', allowEmptyArchive: true)
-      }
-    }
-    stage('CLEAN-UP') {
-      steps {
-        sh 'docker stop nodeapp-dev testing-image'
-        sh 'docker system prune -f'
-        deleteDir()
-      }
-    }
-  }
-  environment {
-    DOCKER = 'credentials(\'docker-hub\')'
-  }
 }
